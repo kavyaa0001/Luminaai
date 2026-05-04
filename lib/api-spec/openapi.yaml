@@ -1,0 +1,510 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: AI Video Learning Analyzer API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: sessions
+    description: Learning session operations
+  - name: quizzes
+    description: Quiz operations
+  - name: dashboard
+    description: Dashboard and analytics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /sessions:
+    get:
+      operationId: getSessions
+      tags: [sessions]
+      summary: List all learning sessions
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a new learning session (YouTube URL or file upload)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /sessions/{id}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get a learning session by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSession
+      tags: [sessions]
+      summary: Delete a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /sessions/{id}/analyze:
+    post:
+      operationId: analyzeSession
+      tags: [sessions]
+      summary: Trigger AI analysis (transcription + question generation) for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{id}/quiz:
+    post:
+      operationId: submitQuiz
+      tags: [quizzes]
+      summary: Submit quiz answers for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmission"
+      responses:
+        "200":
+          description: Quiz result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResult"
+
+  /sessions/{id}/attempts:
+    get:
+      operationId: getSessionAttempts
+      tags: [quizzes]
+      summary: Get all quiz attempts for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attempts list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizAttempt"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get overall learning stats and progress summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/topic-analysis:
+    get:
+      operationId: getTopicAnalysis
+      tags: [dashboard]
+      summary: Get aggregated topic-level strength/weakness analysis
+      responses:
+        "200":
+          description: Topic analysis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopicAnalysis"
+
+  /dashboard/recent-activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent session and quiz activity
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        youtubeUrl:
+          type: string
+          nullable: true
+        videoUrl:
+          type: string
+          nullable: true
+      required:
+        - title
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        youtubeUrl:
+          type: string
+          nullable: true
+        videoUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, processing, ready, failed]
+        summary:
+          type: string
+          nullable: true
+        keyTopics:
+          type: array
+          items:
+            type: string
+          nullable: true
+        questionCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - status
+        - questionCount
+        - createdAt
+        - updatedAt
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        questionText:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+        optionC:
+          type: string
+        optionD:
+          type: string
+        correctOption:
+          type: string
+          enum: [A, B, C, D]
+        topic:
+          type: string
+        explanation:
+          type: string
+          nullable: true
+      required:
+        - id
+        - sessionId
+        - questionText
+        - optionA
+        - optionB
+        - optionC
+        - optionD
+        - correctOption
+        - topic
+
+    SessionDetail:
+      allOf:
+        - $ref: "#/components/schemas/Session"
+        - type: object
+          properties:
+            transcript:
+              type: string
+              nullable: true
+            questions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Question"
+          required:
+            - questions
+
+    QuizSubmission:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              questionId:
+                type: integer
+              selectedOption:
+                type: string
+                enum: [A, B, C, D]
+            required:
+              - questionId
+              - selectedOption
+      required:
+        - answers
+
+    QuizResult:
+      type: object
+      properties:
+        attemptId:
+          type: integer
+        score:
+          type: integer
+        totalQuestions:
+          type: integer
+        percentage:
+          type: number
+        strongTopics:
+          type: array
+          items:
+            type: string
+        weakTopics:
+          type: array
+          items:
+            type: string
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              questionId:
+                type: integer
+              selectedOption:
+                type: string
+                enum: [A, B, C, D]
+              correctOption:
+                type: string
+                enum: [A, B, C, D]
+              isCorrect:
+                type: boolean
+              topic:
+                type: string
+            required:
+              - questionId
+              - selectedOption
+              - correctOption
+              - isCorrect
+              - topic
+      required:
+        - attemptId
+        - score
+        - totalQuestions
+        - percentage
+        - strongTopics
+        - weakTopics
+        - answers
+
+    QuizAttempt:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        score:
+          type: integer
+        totalQuestions:
+          type: integer
+        percentage:
+          type: number
+        weakTopics:
+          type: array
+          items:
+            type: string
+        strongTopics:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - score
+        - totalQuestions
+        - percentage
+        - weakTopics
+        - strongTopics
+        - createdAt
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalSessions:
+          type: integer
+        totalQuizzesTaken:
+          type: integer
+        averageScore:
+          type: number
+        bestScore:
+          type: number
+        totalQuestionsAnswered:
+          type: integer
+        overallAccuracy:
+          type: number
+      required:
+        - totalSessions
+        - totalQuizzesTaken
+        - averageScore
+        - bestScore
+        - totalQuestionsAnswered
+        - overallAccuracy
+
+    TopicAnalysis:
+      type: object
+      properties:
+        topic:
+          type: string
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: integer
+        accuracy:
+          type: number
+        status:
+          type: string
+          enum: [strong, moderate, weak]
+      required:
+        - topic
+        - totalQuestions
+        - correctAnswers
+        - accuracy
+        - status
+
+    ActivityItem:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [session_created, quiz_completed, analysis_done]
+        sessionId:
+          type: integer
+        sessionTitle:
+          type: string
+        score:
+          type: number
+          nullable: true
+        percentage:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - type
+        - sessionId
+        - sessionTitle
+        - createdAt
