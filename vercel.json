@@ -2,28 +2,30 @@
   "version": 2,
   "builds": [
     {
-      "src": "artifacts/api-server/src/index.ts",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     },
     {
-      "src": "artifacts/video-learning/package.json",
+      "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "artifacts/video-learning/dist"
+      }
     }
   ],
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "artifacts/api-server/src/index.ts"
+      "destination": "api/index.ts"
     },
     {
       "source": "/(.*)",
-      "destination": "artifacts/video-learning/$1",
+      "destination": "/$1",
       "continue": true
     },
     {
       "source": "/(.*)",
-      "destination": "artifacts/video-learning/index.html"
+      "destination": "/index.html"
     }
   ]
 }
