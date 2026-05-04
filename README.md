@@ -1,3 +1,31 @@
+# Lumina AI - Advanced Video Learning Analyzer
+
+## 🚀 Vercel Deployment Guide
+
+To deploy this project to Vercel, follow these steps:
+
+### 1. Database Setup (CRITICAL)
+Vercel's serverless environment is ephemeral, meaning `data.json` will reset every time the server sleeps. 
+**For production, you MUST use a cloud database.**
+1. Go to [Neon.tech](https://neon.tech/) and create a free Postgres database.
+2. Copy the `DATABASE_URL` (Connection String).
+
+### 2. Vercel Configuration
+1. Connect your GitHub repository to Vercel.
+2. In the **Project Settings**:
+   - **Root Directory**: Leave it as the root of the repo.
+   - **Build Command**: `pnpm build`
+   - **Install Command**: `pnpm install`
+3. Add the following **Environment Variables**:
+   - `GEMINI_API_KEY`: Your Google Gemini API Key.
+   - `DATABASE_URL`: Your Neon/Vercel Postgres connection string.
+   - `NODE_ENV`: `production`
+
+### 3. Deploy
+Click **Deploy**. Vercel will build both the frontend and the backend automatically using the `vercel.json` routing.
+
+---
+
 # AI Video Learning Analyzer Platform
 
 An AI-powered web platform that transforms passive video watching into an active, measurable learning experience. Paste a YouTube link, get a quiz — track what you know and what you need to work on.
