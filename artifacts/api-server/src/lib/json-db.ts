@@ -6,6 +6,7 @@ export interface Session {
   title: string;
   youtubeUrl: string | null;
   videoUrl: string | null;
+  requestedQuestionCount?: number;
   status: string;
   transcript: string | null;
   summary: string | null;
@@ -25,6 +26,7 @@ export interface Question {
   correctOption: "A" | "B" | "C" | "D";
   topic: string;
   explanation: string;
+  timestamp?: string;
   createdAt: string;
 }
 

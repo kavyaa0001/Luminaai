@@ -15,7 +15,13 @@ import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   url: z.string().url("Please enter a valid URL").includes("youtube.com", { message: "Must be a YouTube URL" }).or(z.string().includes("youtu.be", { message: "Must be a YouTube URL" })),
+  questionCount: z.number().min(10).max(40).default(10),
+  videoType: z.enum(["short", "tutorial"]).default("short"),
 });
+
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -29,8 +35,15 @@ export default function Home() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { url: "" },
+    defaultValues: { 
+      url: "",
+      questionCount: 10,
+      videoType: "short"
+    },
   });
+
+  const videoType = form.watch("videoType");
+  const currentCount = form.watch("questionCount");
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -40,6 +53,8 @@ export default function Home() {
         data: {
           title: "New Video Analysis",
           youtubeUrl: values.url,
+          // @ts-ignore - adding new field
+          questionCount: values.videoType === "short" ? 10 : values.questionCount,
         }
       });
       
@@ -48,7 +63,7 @@ export default function Home() {
       
       toast({
         title: "Video submitted!",
-        description: "We are analyzing the content. You can start the quiz shortly.",
+        description: `We are analyzing the content with ${values.videoType === "short" ? 10 : values.questionCount} questions.`,
       });
       
       queryClient.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
@@ -84,15 +99,17 @@ export default function Home() {
         </p>
 
         {/* Input Form */}
-        <div className="bg-card p-4 rounded-2xl shadow-xl border border-border/50 max-w-2xl mx-auto relative overflow-hidden">
+        <div className="bg-card p-6 rounded-2xl shadow-xl border border-border/50 max-w-2xl mx-auto relative overflow-hidden text-left">
           <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+          
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row gap-3">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="url"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
+                  <FormItem>
+                    <Label className="text-sm font-semibold mb-2 block">YouTube Link</Label>
                     <FormControl>
                       <div className="relative">
                         <Youtube className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -108,16 +125,70 @@ export default function Home() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <FormField
+                  control={form.control}
+                  name="videoType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <Label className="text-sm font-semibold">Video Length</Label>
+                      <FormControl>
+                        <Tabs value={field.value} onValueChange={field.onChange} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 bg-secondary/50 p-1 rounded-xl">
+                            <TabsTrigger value="short" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Short (10-30m)</TabsTrigger>
+                            <TabsTrigger value="tutorial" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Tutorial (Long)</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {videoType === "tutorial" && (
+                  <FormField
+                    control={form.control}
+                    name="questionCount"
+                    render={({ field }) => (
+                      <FormItem className="space-y-4">
+                        <div className="flex justify-between">
+                          <Label className="text-sm font-semibold">Questions: {currentCount}</Label>
+                          <span className="text-xs text-muted-foreground">Max 40</span>
+                        </div>
+                        <FormControl>
+                          <Slider
+                            min={10}
+                            max={40}
+                            step={5}
+                            value={[field.value]}
+                            onValueChange={(vals) => field.onChange(vals[0])}
+                            className="py-2"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {videoType === "short" && (
+                  <div className="bg-secondary/20 rounded-xl p-4 border border-border/50">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Optimized for quick learning. We'll generate <strong>10 high-impact MCQs</strong> covering the most important concepts.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <Button 
                 type="submit" 
                 size="lg" 
-                className="py-6 px-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-semibold"
+                className="w-full py-7 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-bold text-lg"
                 disabled={isProcessing}
               >
                 {isProcessing ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing</>
+                  <><Loader2 className="mr-2 h-6 w-6 animate-spin" /> Analyzing Video...</>
                 ) : (
-                  <><SparklesIcon className="mr-2 h-5 w-5" /> Analyze Video</>
+                  <><ArrowRight className="mr-2 h-6 w-6" /> Start Learning</>
                 )}
               </Button>
             </form>

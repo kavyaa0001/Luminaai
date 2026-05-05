@@ -14,9 +14,10 @@ router.get("/sessions", async (_req, res) => {
 });
 
 router.post("/sessions", async (req, res) => {
-  const { title, youtubeUrl, videoUrl } = req.body;
+  const { title, youtubeUrl, videoUrl, questionCount } = req.body;
   if (!title) {
-    return res.status(400).json({ error: "title is required" });
+    res.status(400).json({ error: "title is required" });
+    return;
   }
 
   const session = {
@@ -24,6 +25,7 @@ router.post("/sessions", async (req, res) => {
     title,
     youtubeUrl: youtubeUrl ?? null,
     videoUrl: videoUrl ?? null,
+    requestedQuestionCount: questionCount ? parseInt(questionCount, 10) : 10,
     status: "pending",
     summary: null,
     keyTopics: null,
@@ -42,7 +44,10 @@ router.get("/sessions/:id", async (req, res) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const session = jsonDb.data.sessions.find(s => s.id === id);
   
-  if (!session) return res.status(404).json({ error: "Session not found" });
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
 
   const questions = jsonDb.data.questions.filter(q => q.sessionId === id);
 
@@ -61,7 +66,8 @@ router.delete("/sessions/:id", async (req, res) => {
   jsonDb.save();
   
   if (jsonDb.data.sessions.length === initialLength) {
-    return res.status(404).json({ error: "Session not found" });
+    res.status(404).json({ error: "Session not found" });
+    return;
   }
   res.sendStatus(204);
 });
@@ -69,7 +75,10 @@ router.delete("/sessions/:id", async (req, res) => {
 router.post("/sessions/:id/analyze", async (req, res) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const session = jsonDb.data.sessions.find(s => s.id === id);
-  if (!session) return res.status(404).json({ error: "Session not found" });
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
 
   try {
     await processSession(id);
@@ -82,6 +91,23 @@ router.post("/sessions/:id/analyze", async (req, res) => {
       session.status = "failed";
       jsonDb.save();
     }
+    
+    if (error.status === 429) {
+      res.status(429).json({ 
+        error: "AI Quota Exceeded", 
+        details: "The Gemini AI API quota has been reached. Please wait a moment or use your own API key." 
+      });
+      return;
+    }
+    
+    if (error.status === 403) {
+      res.status(403).json({ 
+        error: "AI Key Invalid", 
+        details: "The Gemini API key is invalid or has been reported as leaked. Please provide a valid API key in your environment variables." 
+      });
+      return;
+    }
+    
     res.status(500).json({ error: "Failed to analyze session", details: error.message });
   }
 });
@@ -89,10 +115,16 @@ router.post("/sessions/:id/analyze", async (req, res) => {
 router.post("/sessions/:id/quiz", async (req, res) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const { answers } = req.body;
-  if (!answers || !Array.isArray(answers)) return res.status(400).json({ error: "answers array is required" });
+  if (!answers || !Array.isArray(answers)) {
+    res.status(400).json({ error: "answers array is required" });
+    return;
+  }
 
   const questions = jsonDb.data.questions.filter(q => q.sessionId === id);
-  if (questions.length === 0) return res.status(404).json({ error: "No questions found" });
+  if (questions.length === 0) {
+    res.status(404).json({ error: "No questions found" });
+    return;
+  }
 
   const questionMap = new Map(questions.map((q) => [q.id, q]));
 

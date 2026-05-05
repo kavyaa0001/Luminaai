@@ -2,17 +2,18 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "./logger";
 import { jsonDb } from "./json-db";
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY must be set");
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ 
-  model: "gemini-flash-latest",
-  generationConfig: {
-    responseMimeType: "application/json",
+function getModel() {
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.includes("ENTER_YOUR")) {
+    return null;
   }
-});
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  return genAI.getGenerativeModel({ 
+    model: "gemini-flash-latest",
+    generationConfig: {
+      responseMimeType: "application/json",
+    }
+  });
+}
 
 interface GeneratedQuestion {
   questionText: string;
@@ -41,11 +42,20 @@ export async function extractYouTubeTranscript(youtubeUrl: string): Promise<stri
   }
 
   try {
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    logger.info({ videoId }, "Fetching transcript from YouTube");
+    let transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    logger.info({ videoId, itemCount: transcriptItems.length }, "YouTube transcript fetched successfully");
+
+    // Limit transcript size to avoid hitting API rate limits
+    if (transcriptItems.length > 500) {
+      logger.info({ videoId, originalCount: transcriptItems.length }, "Truncating large transcript to 500 items");
+      transcriptItems = transcriptItems.slice(0, 500);
+    }
+
     // Include timestamps in the transcript text for the AI to reference
     return transcriptItems.map(item => `[${Math.floor(item.offset / 1000)}s] ${item.text}`).join(" ");
   } catch (error) {
-    logger.error({ videoId, error }, "Failed to fetch YouTube transcript, falling back to AI simulation");
+    logger.warn({ videoId, error }, "Failed to fetch YouTube transcript, falling back to AI simulation");
     
     // Fallback to simulation if transcript is unavailable (e.g. disabled on video)
     const prompt = `You are a helpful educational assistant. The user provided a YouTube video ID: ${videoId}. 
@@ -53,16 +63,21 @@ Since the transcript is unavailable, generate a realistic educational transcript
 If you can identify the video title or topic from the ID, use it. Otherwise, create a generic but high-quality educational transcript about a popular science or tech topic.
 Return ONLY the transcript text, no additional commentary.`;
 
+    const model = getModel();
+    if (!model) {
+      throw new Error("GEMINI_API_KEY is not configured. Please add it to your .env file.");
+    }
+
     const result = await model.generateContent(prompt);
     return result.response.text();
   }
 }
 
-export async function analyzeTranscript(transcript: string): Promise<AnalysisResult> {
+export async function analyzeTranscript(transcript: string, questionCount: number = 10): Promise<AnalysisResult> {
   const prompt = `You are an expert educational content analyzer. Analyze the provided video transcript and:
 1. Write a concise summary (2-3 sentences)
 2. Identify 3-6 key topics covered
-3. Generate 8-12 multiple choice questions based on the content
+3. Generate exactly ${questionCount} multiple choice questions based on the content
 
 Each question must have:
 - A clear question statement
@@ -97,10 +112,37 @@ Analyze this video transcript:
 
 ${transcript}`;
 
-  const result = await model.generateContent(prompt);
-  const content = result.response.text();
+  const model = getModel();
+  if (!model) {
+    throw new Error("GEMINI_API_KEY is not configured. Please add it to your .env file.");
+  }
+
+  logger.info("Sending transcript to Gemini for analysis");
   
-  return JSON.parse(content) as AnalysisResult;
+  let attempts = 0;
+  const maxAttempts = 3;
+  let lastError;
+
+  while (attempts < maxAttempts) {
+    try {
+      const result = await model.generateContent(prompt);
+      const content = result.response.text();
+      logger.info("Gemini analysis response received");
+      return JSON.parse(content) as AnalysisResult;
+    } catch (error: any) {
+      lastError = error;
+      if (error.status === 429 || error.status === 503) {
+        attempts++;
+        const waitTime = error.status === 429 ? 20000 : 2000 * attempts;
+        logger.warn({ status: error.status, attempt: attempts, waitTime }, "Gemini overloaded or rate limited, retrying...");
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError;
 }
 
 export async function processSession(sessionId: number): Promise<void> {
@@ -124,7 +166,8 @@ export async function processSession(sessionId: number): Promise<void> {
     throw new Error("No video source provided");
   }
 
-  const analysis = await analyzeTranscript(transcript);
+  const questionCount = session.requestedQuestionCount || 10;
+  const analysis = await analyzeTranscript(transcript, questionCount);
 
   session.status = "ready";
   session.transcript = transcript;

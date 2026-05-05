@@ -137,7 +137,7 @@ router.get("/dashboard/mistakes", async (_req, res): Promise<void> => {
     const answers = attempt.answers as Array<{
       questionId: number;
       isCorrect: boolean;
-      userAnswer: string;
+      selectedOption: string;
     }>;
 
     if (!Array.isArray(answers)) continue;
