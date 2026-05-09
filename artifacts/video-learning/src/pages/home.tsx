@@ -71,11 +71,12 @@ export default function Home() {
       
       queryClient.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
       setLocation(`/sessions/${newSession.id}`);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || error.message || "Please check your URL and try again.";
       toast({
         variant: "destructive",
-        title: "Failed to submit video",
-        description: "Please check your URL and try again.",
+        title: "Submission Failed",
+        description: errorMsg,
       });
     } finally {
       setIsProcessing(false);
