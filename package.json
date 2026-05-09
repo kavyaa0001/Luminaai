@@ -1,34 +1,17 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
-  "license": "MIT",
-  "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm --filter video-learning build && pnpm --filter api-server build && echo '--- BUILD DONE ---' && mkdir -p public && cp -r artifacts/video-learning/dist/. public/ && echo '--- COPY DONE ---'",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
-  },
+  "name": "lumina-ai",
+  "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "build": "pnpm --filter video-learning build && pnpm --filter api-server build && mkdir -p public && cp -r artifacts/video-learning/dist/. public/"
+  },
   "dependencies": {
-    "express": "^5",
+    "express": "^5.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "@neondatabase/serverless": "^1.1.0",
     "drizzle-orm": "^0.31.0",
-    "drizzle-zod": "^0.8.3",
     "@google/generative-ai": "^0.21.0",
-    "pino": "^9",
-    "pino-http": "^10",
-    "cors": "^2",
-    "cookie-parser": "^1.4.7",
-    "youtube-transcript": "^1.3.1",
-    "zod": "^3.24.0",
-    "dotenv": "^17.4.2"
-  },
-  "devDependencies": {
-    "prettier": "^3.8.1",
-    "typescript": "~5.9.2",
-    "@types/node": "^20.11.0",
-    "@types/express": "^5.0.6",
-    "@types/cors": "^2.8.19",
-    "esbuild": "^0.27.3"
+    "youtube-transcript": "^1.3.1"
   }
 }
