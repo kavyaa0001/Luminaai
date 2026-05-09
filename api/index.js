@@ -1,8 +1,7 @@
-export default function handler(request, response) {
-  if (request.url.includes('health')) {
-    return response.status(200).json({ status: 'ok', message: 'Standard Vercel Function is ALIVE!' });
-  }
-  
-  // Placeholder for real logic
-  response.status(200).json({ message: "Ready to process quiz" });
-}
+module.exports = (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Backend is ALIVE via CJS!',
+    env_check: process.env.DATABASE_URL ? 'DB_SET' : 'DB_MISSING'
+  });
+};
