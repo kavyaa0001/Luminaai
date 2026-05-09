@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 import { db, sessionsTable, questionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { YoutubeTranscript } from "youtube-transcript";
