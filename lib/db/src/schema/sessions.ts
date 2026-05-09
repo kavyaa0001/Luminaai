@@ -1,19 +1,28 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { questionsTable } from "./questions";
+import { attemptsTable } from "./attempts";
 
-export const sessionsTable = sqliteTable("sessions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const sessionsTable = pgTable("sessions", {
+  id: serial("id").primaryKey(),
   title: text("title").notNull(),
   youtubeUrl: text("youtube_url"),
   videoUrl: text("video_url"),
+  requestedQuestionCount: integer("requested_question_count").default(10),
   status: text("status").notNull().default("pending"),
   transcript: text("transcript"),
   summary: text("summary"),
   keyTopics: text("key_topics", { mode: "json" }).$type<string[]>(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()).$onUpdate(() => new Date()),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const sessionsRelations = relations(sessionsTable, ({ many }) => ({
+  questions: many(questionsTable),
+  attempts: many(attemptsTable),
+}));
 
 export const insertSessionSchema = createInsertSchema(sessionsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertSession = z.infer<typeof insertSessionSchema>;

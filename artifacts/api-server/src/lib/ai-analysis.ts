@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "./logger";
-import { jsonDb } from "./json-db";
+import { db, sessionsTable, questionsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { YoutubeTranscript } from "youtube-transcript";
 
 function getModel() {
   if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.includes("ENTER_YOUR")) {
@@ -33,8 +35,6 @@ interface AnalysisResult {
   questions: GeneratedQuestion[];
 }
 
-import { YoutubeTranscript } from "youtube-transcript";
-
 export async function extractYouTubeTranscript(youtubeUrl: string): Promise<string> {
   const videoId = extractYouTubeVideoId(youtubeUrl);
   if (!videoId) {
@@ -46,18 +46,15 @@ export async function extractYouTubeTranscript(youtubeUrl: string): Promise<stri
     let transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
     logger.info({ videoId, itemCount: transcriptItems.length }, "YouTube transcript fetched successfully");
 
-    // Limit transcript size to avoid hitting API rate limits
     if (transcriptItems.length > 500) {
       logger.info({ videoId, originalCount: transcriptItems.length }, "Truncating large transcript to 500 items");
       transcriptItems = transcriptItems.slice(0, 500);
     }
 
-    // Include timestamps in the transcript text for the AI to reference
     return transcriptItems.map(item => `[${Math.floor(item.offset / 1000)}s] ${item.text}`).join(" ");
   } catch (error) {
     logger.warn({ videoId, error }, "Failed to fetch YouTube transcript, falling back to AI simulation");
     
-    // Fallback to simulation if transcript is unavailable (e.g. disabled on video)
     const prompt = `You are a helpful educational assistant. The user provided a YouTube video ID: ${videoId}. 
 Since the transcript is unavailable, generate a realistic educational transcript based on the likely content of a video with this ID. 
 If you can identify the video title or topic from the ID, use it. Otherwise, create a generic but high-quality educational transcript about a popular science or tech topic.
@@ -148,13 +145,17 @@ ${transcript}`;
 export async function processSession(sessionId: number): Promise<void> {
   logger.info({ sessionId }, "Starting session analysis");
 
-  const session = jsonDb.data.sessions.find(s => s.id === sessionId);
+  const session = await db.query.sessionsTable.findFirst({
+    where: eq(sessionsTable.id, sessionId),
+  });
+  
   if (!session) {
     throw new Error(`Session ${sessionId} not found`);
   }
 
-  session.status = "processing";
-  jsonDb.save();
+  await db.update(sessionsTable)
+    .set({ status: "processing" })
+    .where(eq(sessionsTable.id, sessionId));
 
   let transcript = "";
 
@@ -169,30 +170,31 @@ export async function processSession(sessionId: number): Promise<void> {
   const questionCount = session.requestedQuestionCount || 10;
   const analysis = await analyzeTranscript(transcript, questionCount);
 
-  session.status = "ready";
-  session.transcript = transcript;
-  session.summary = analysis.summary;
-  session.keyTopics = analysis.keyTopics;
-  jsonDb.save();
+  await db.update(sessionsTable)
+    .set({ 
+      status: "ready",
+      transcript,
+      summary: analysis.summary,
+      keyTopics: analysis.keyTopics,
+      updatedAt: new Date()
+    })
+    .where(eq(sessionsTable.id, sessionId));
 
   if (analysis.questions && analysis.questions.length > 0) {
-    for (const q of analysis.questions) {
-      jsonDb.data.questions.push({
-        id: jsonDb.data.nextQuestionId++,
-        sessionId,
-        questionText: q.questionText,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
-        correctOption: q.correctOption,
-        topic: q.topic,
-        explanation: q.explanation,
-        timestamp: q.timestamp,
-        createdAt: new Date().toISOString()
-      });
-    }
-    jsonDb.save();
+    const questionsToInsert = analysis.questions.map(q => ({
+      sessionId,
+      questionText: q.questionText,
+      optionA: q.optionA,
+      optionB: q.optionB,
+      optionC: q.optionC,
+      optionD: q.optionD,
+      correctOption: q.correctOption,
+      topic: q.topic,
+      explanation: q.explanation,
+      timestamp: q.timestamp,
+    }));
+
+    await db.insert(questionsTable).values(questionsToInsert);
   }
 
   logger.info({ sessionId, questionCount: analysis.questions.length }, "Session analysis complete");
