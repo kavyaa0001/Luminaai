@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, sessionsTable, questionsTable, attemptsTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   try {

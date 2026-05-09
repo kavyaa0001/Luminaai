@@ -3,7 +3,7 @@ import { db, sessionsTable, questionsTable, attemptsTable } from "@workspace/db"
 import { eq, desc, count } from "drizzle-orm";
 import { processSession } from "../lib/ai-analysis.js";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.get("/sessions", async (_req, res) => {
   try {
