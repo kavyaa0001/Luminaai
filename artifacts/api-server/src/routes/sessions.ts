@@ -1,11 +1,11 @@
-import { Router, type IRouter } from "express";
+import { Router, Request, Response } from "express";
 import { db, sessionsTable, questionsTable, attemptsTable } from "@workspace/db";
 import { eq, desc, count } from "drizzle-orm";
 import { processSession } from "../lib/ai-analysis.js";
 
 const router = Router();
 
-router.get("/sessions", async (_req, res) => {
+router.get("/sessions", async (_req: Request, res: Response) => {
   try {
     const sessions = await db.query.sessionsTable.findMany({
       orderBy: [desc(sessionsTable.createdAt)],
@@ -24,7 +24,7 @@ router.get("/sessions", async (_req, res) => {
   }
 });
 
-router.post("/sessions", async (req, res) => {
+router.post("/sessions", async (req: Request, res: Response) => {
   const { title, youtubeUrl, videoUrl, questionCount } = req.body;
   if (!title) {
     res.status(400).json({ error: "title is required" });
@@ -46,7 +46,7 @@ router.post("/sessions", async (req, res) => {
   }
 });
 
-router.get("/sessions/:id", async (req, res) => {
+router.get("/sessions/:id", async (req: Request, res: Response) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   
   try {
@@ -75,7 +75,7 @@ router.get("/sessions/:id", async (req, res) => {
   }
 });
 
-router.delete("/sessions/:id", async (req, res) => {
+router.delete("/sessions/:id", async (req: Request, res: Response) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   
   try {
@@ -91,7 +91,7 @@ router.delete("/sessions/:id", async (req, res) => {
   }
 });
 
-router.post("/sessions/:id/analyze", async (req, res) => {
+router.post("/sessions/:id/analyze", async (req: Request, res: Response) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   
   try {
@@ -142,7 +142,7 @@ router.post("/sessions/:id/analyze", async (req, res) => {
   }
 });
 
-router.post("/sessions/:id/quiz", async (req, res) => {
+router.post("/sessions/:id/quiz", async (req: Request, res: Response) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const { answers } = req.body;
   if (!answers || !Array.isArray(answers)) {
@@ -208,7 +208,7 @@ router.post("/sessions/:id/quiz", async (req, res) => {
   }
 });
 
-router.get("/sessions/:id/attempts", async (req, res) => {
+router.get("/sessions/:id/attempts", async (req: Request, res: Response) => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   try {
     const attempts = await db.select().from(attemptsTable)

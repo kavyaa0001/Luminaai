@@ -1,10 +1,10 @@
-import { Router, type IRouter } from "express";
+import { Router, Request, Response } from "express";
 import { db, sessionsTable, questionsTable, attemptsTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/dashboard/summary", async (_req, res): Promise<void> => {
+router.get("/dashboard/summary", async (_req: Request, res: Response): Promise<void> => {
   try {
     const sessionsCount = await db.select({ count: sql<number>`count(*)` }).from(sessionsTable);
     const attempts = await db.select().from(attemptsTable);
@@ -40,7 +40,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   }
 });
 
-router.get("/dashboard/topic-analysis", async (_req, res): Promise<void> => {
+router.get("/dashboard/topic-analysis", async (_req: Request, res: Response): Promise<void> => {
   try {
     const attempts = await db.select().from(attemptsTable);
     const topicStats = new Map<string, { correct: number; total: number }>();
@@ -87,7 +87,7 @@ router.get("/dashboard/topic-analysis", async (_req, res): Promise<void> => {
   }
 });
 
-router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
+router.get("/dashboard/recent-activity", async (_req: Request, res: Response): Promise<void> => {
   try {
     const attempts = await db.select().from(attemptsTable).orderBy(desc(attemptsTable.createdAt)).limit(10);
     const sessions = await db.select().from(sessionsTable).orderBy(desc(sessionsTable.createdAt)).limit(10);
@@ -143,7 +143,7 @@ router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
   }
 });
 
-router.get("/dashboard/mistakes", async (_req, res): Promise<void> => {
+router.get("/dashboard/mistakes", async (_req: Request, res: Response): Promise<void> => {
   try {
     const attempts = await db.select().from(attemptsTable).orderBy(desc(attemptsTable.createdAt));
     const mistakes: any[] = [];
