@@ -1,15 +1,9 @@
 import { Router } from "express";
-// @ts-ignore
-import * as DB from "@workspace/db";
+import { db, sessionsTable, questionsTable, attemptsTable } from "../../../lib/db/src/index.js";
 import { eq, desc, count } from "drizzle-orm";
-// @ts-ignore
 import { processSession } from "../lib/ai-analysis.js";
 
 const router = Router();
-const db = (DB as any).db;
-const sessionsTable = (DB as any).sessionsTable;
-const questionsTable = (DB as any).questionsTable;
-const attemptsTable = (DB as any).attemptsTable;
 
 router.get("/sessions", async (_req: any, res: any) => {
   try {
