@@ -14,7 +14,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
-  url: z.string().url("Please enter a valid URL").includes("youtube.com", { message: "Must be a YouTube URL" }).or(z.string().includes("youtu.be", { message: "Must be a YouTube URL" })),
+  url: z.string().url("Please enter a valid URL").refine(
+    (url) => url.includes("youtube.com") || url.includes("youtu.be"),
+    { message: "Must be a valid YouTube URL" }
+  ),
   questionCount: z.number().min(10).max(40).default(10),
   videoType: z.enum(["short", "tutorial"]).default("short"),
 });
