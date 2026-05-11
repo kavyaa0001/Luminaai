@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
-import { useGetSession, useSubmitQuiz, getGetSessionQueryKey } from "@workspace/api-client-react";
+import { getSessionById, updateSessionScore } from "../lib/storage";
 import { ArrowLeft, Check, ChevronRight, Loader2, BrainCircuit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -18,22 +18,14 @@ export default function Quiz() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswersMap>({});
   
-  const { data: session, isLoading } = useGetSession(id, {
-    query: {
-      enabled: !!id,
-      queryKey: getGetSessionQueryKey(id),
-    }
-  });
-
-  const submitQuiz = useSubmitQuiz();
-
+  const session = getSessionById(params.id || "");
   const questions = useMemo(() => session?.questions || [], [session]);
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const progress = questions.length > 0 ? ((currentQuestionIndex) / questions.length) * 100 : 0;
 
   const handleSelectOption = (option: "A" | "B" | "C" | "D") => {
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: option }));
+    setAnswers(prev => ({ ...prev, [currentQuestionIndex]: option }));
   };
 
   const handleNext = () => {
@@ -59,19 +51,17 @@ export default function Quiz() {
     }
 
     try {
-      const submissionData = Object.entries(answers).map(([qId, selectedOption]) => ({
-        questionId: parseInt(qId, 10),
-        selectedOption
-      }));
-
-      const result = await submitQuiz.mutateAsync({
-        id,
-        data: { answers: submissionData }
+      let score = 0;
+      questions.forEach((q, index) => {
+        if (answers[index] === q.correctOption) {
+          score++;
+        }
       });
+      
+      updateSessionScore(session!.id, score, questions.length);
 
-      // Navigate to results with the attempt ID
-      // Wouter doesn't have native state passing easily, we'll fetch attempts on the results page or use a query param
-      setLocation(`/sessions/${id}/results?attempt=${result.attemptId}`);
+      // Navigate to results
+      setLocation(`/sessions/${session!.id}/attempts`);
     } catch (err) {
       toast({
         title: "Submission failed",
@@ -81,13 +71,7 @@ export default function Quiz() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
-      </div>
-    );
-  }
+
 
   if (!questions.length) {
     return (
@@ -98,7 +82,7 @@ export default function Quiz() {
     );
   }
 
-  const selectedOption = answers[currentQuestion.id];
+  const selectedOption = answers[currentQuestionIndex];
   const isAnswered = !!selectedOption;
 
   return (
@@ -120,7 +104,7 @@ export default function Quiz() {
 
       {/* Quiz Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 w-full max-w-3xl mx-auto">
-        <div className="w-full animate-in slide-in-from-bottom-4 fade-in duration-300" key={currentQuestion.id}>
+        <div className="w-full animate-in slide-in-from-bottom-4 fade-in duration-300" key={currentQuestionIndex}>
           
           <div className="mb-4">
             <span className="inline-block px-3 py-1 rounded-full bg-accent/20 text-accent-foreground text-xs font-semibold uppercase tracking-wider mb-4 border border-accent/20">
@@ -182,10 +166,10 @@ export default function Quiz() {
             <Button 
               size="lg" 
               onClick={handleSubmit} 
-              disabled={!isAnswered || submitQuiz.isPending}
+              disabled={!isAnswered}
               className="rounded-xl px-8 bg-primary text-primary-foreground"
             >
-              {submitQuiz.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : "Submit Quiz"}
+              Submit Quiz
             </Button>
           ) : (
             <Button 

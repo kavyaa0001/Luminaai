@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter video-learning build && pnpm --filter api-server build && mkdir -p public && cp -r artifacts/video-learning/dist/. public/"
+    "build": "pnpm --filter video-learning build && mkdir -p public && cp -r artifacts/video-learning/dist/. public/"
   },
   "dependencies": {
     "express": "^5.0.0",

@@ -7,9 +7,8 @@ import { Youtube, Upload, ArrowRight, PlayCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { useCreateSession, useAnalyzeSession, useGetSessions, getGetSessionsQueryKey } from "@workspace/api-client-react";
+import { saveSession, getSessions } from "../lib/storage";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,12 +28,8 @@ import { Label } from "@/components/ui/label";
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const { data: sessions } = useGetSessions();
-  const createSession = useCreateSession();
-  const analyzeSession = useAnalyzeSession();
+  const sessions = getSessions();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,39 +46,46 @@ export default function Home() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsProcessing(true);
-      // Create session
-      const newSession = await createSession.mutateAsync({
-        data: {
-          title: "New Video Analysis",
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           youtubeUrl: values.url,
-          // @ts-ignore - adding new field
           questionCount: values.videoType === "short" ? 10 : values.questionCount,
-        }
+        })
       });
       
-      // Trigger analysis immediately
-      await analyzeSession.mutateAsync({ id: newSession.id });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to analyze video");
+      }
+      
+      const newSession = saveSession({
+        youtubeUrl: data.data.youtubeUrl,
+        summary: data.data.summary,
+        keyTopics: data.data.keyTopics,
+        questions: data.data.questions
+      });
       
       toast({
         title: "Video submitted!",
-        description: `We are analyzing the content with ${values.videoType === "short" ? 10 : values.questionCount} questions.`,
+        description: `Analysis complete. Generated ${data.data.questions.length} questions.`,
       });
       
-      queryClient.invalidateQueries({ queryKey: getGetSessionsQueryKey() });
       setLocation(`/sessions/${newSession.id}`);
     } catch (error: any) {
-      const errorMsg = error.response?.data?.error || error.message || "Please check your URL and try again.";
       toast({
         variant: "destructive",
         title: "Submission Failed",
-        description: errorMsg,
+        description: error.message || "Please check your URL and try again.",
       });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const recentSessions = Array.isArray(sessions) ? sessions.slice(0, 3) : [];
+  const recentSessions = sessions.slice(0, 3);
 
   return (
     <div className="w-full max-w-5xl mx-auto p-6 md:p-10 space-y-12 animate-in fade-in zoom-in duration-500">
@@ -222,15 +224,15 @@ export default function Home() {
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                       <PlayCircle className="w-6 h-6" />
                     </div>
-                    <Badge variant={session.status === "ready" ? "default" : session.status === "processing" ? "secondary" : "outline"} className="capitalize">
-                      {session.status}
+                    <Badge variant="default" className="capitalize">
+                      Ready
                     </Badge>
                   </div>
                   <h3 className="font-semibold text-lg line-clamp-2 mb-2 text-foreground group-hover:text-primary transition-colors">
                     {session.title || "Untitled Session"}
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    {session.questionCount} questions available
+                    {session.questions?.length || 10} questions available
                   </p>
                   
                   {session.keyTopics && session.keyTopics.length > 0 && (

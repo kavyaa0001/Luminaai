@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useParams, Link, useLocation } from "wouter";
-import { useGetSession, getGetSessionQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { getSessionById } from "../lib/storage";
 import { ArrowLeft, Play, BarChart2, CheckCircle2, Clock, BrainCircuit, FileText, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,40 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SessionDetail() {
   const params = useParams();
-  const id = parseInt(params.id || "0", 10);
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
+  const session = getSessionById(params.id || "");
 
-  const { data: session, isLoading, error } = useGetSession(id, {
-    query: {
-      enabled: !!id,
-      queryKey: getGetSessionQueryKey(id),
-    }
-  });
-
-  // Polling if processing
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (session?.status === "processing" || session?.status === "pending") {
-      interval = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey(id) });
-      }, 5000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [session?.status, id, queryClient]);
-
-  if (error) {
-    return (
-      <div className="p-10 text-center">
-        <h2 className="text-2xl font-bold text-destructive">Error loading session</h2>
-        <Button onClick={() => setLocation("/sessions")} variant="outline" className="mt-4">Back to Sessions</Button>
-      </div>
-    );
-  }
-
-  if (isLoading || !session) {
+  if (!session) {
     return (
       <div className="p-6 md:p-10 max-w-5xl mx-auto w-full space-y-6">
         <Skeleton className="w-32 h-8" />
@@ -62,8 +30,8 @@ export default function SessionDetail() {
     );
   }
 
-  const isReady = session.status === "ready";
-  const isProcessing = session.status === "processing" || session.status === "pending";
+  const isReady = true;
+  const isProcessing = false;
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto w-full animate-in fade-in duration-300">
@@ -75,11 +43,10 @@ export default function SessionDetail() {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-3">
             <Badge 
-              variant={isReady ? "default" : isProcessing ? "secondary" : "destructive"} 
+              variant="default"
               className="px-3 py-1 text-sm rounded-full"
             >
-              {isProcessing && <div className="w-2 h-2 rounded-full bg-primary animate-pulse mr-2 inline-block" />}
-              {session.status.toUpperCase()}
+              READY
             </Badge>
             {session.youtubeUrl && (
               <a href={session.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
@@ -99,8 +66,6 @@ export default function SessionDetail() {
           </div>
         </div>
 
-        {isReady && (
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
             <Button 
               size="lg" 
               className="rounded-xl px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
@@ -108,16 +73,6 @@ export default function SessionDetail() {
             >
               <BrainCircuit className="w-5 h-5 mr-2" /> Start Quiz
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="rounded-xl border-border bg-card"
-              onClick={() => setLocation(`/sessions/${session.id}/attempts`)}
-            >
-              <BarChart2 className="w-5 h-5 mr-2" /> History
-            </Button>
-          </div>
-        )}
       </div>
 
       <div className="grid md:grid-cols-3 gap-8">
@@ -146,16 +101,7 @@ export default function SessionDetail() {
             )}
           </section>
 
-          {/* Transcript (if available and needed) */}
-          {session.transcript && (
-            <section className="bg-secondary/20 rounded-3xl p-6 md:p-8">
-              <h2 className="text-lg font-bold mb-4">Transcript Excerpt</h2>
-              <div className="h-48 overflow-y-auto pr-4 text-sm text-muted-foreground leading-relaxed space-y-2 font-mono scrollbar-thin">
-                {session.transcript}
-              </div>
-            </section>
-          )}
-        </div>
+
 
         <div className="space-y-6">
           {/* Stats Card */}
@@ -169,14 +115,14 @@ export default function SessionDetail() {
                   <CheckCircle2 className="w-5 h-5 text-accent" />
                   <span>Questions</span>
                 </div>
-                <span className="font-bold text-xl">{session.questionCount || 0}</span>
+                <span className="font-bold text-xl">{session.questions?.length || 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-accent" />
                   <span>Est. Time</span>
                 </div>
-                <span className="font-bold text-xl">{Math.max(2, Math.round((session.questionCount || 0) * 1.5))} min</span>
+                <span className="font-bold text-xl">{Math.max(2, Math.round((session.questions?.length || 0) * 1.5))} min</span>
               </div>
             </div>
             

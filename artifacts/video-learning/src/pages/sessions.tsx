@@ -1,4 +1,4 @@
-import { useGetSessions } from "@workspace/api-client-react";
+import { getSessions } from "../lib/storage";
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
 import { Video, BookOpen, Clock, AlertCircle, RefreshCw, Play, BarChart2 } from "lucide-react";
@@ -9,17 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Sessions() {
   const [, setLocation] = useLocation();
-  const { data: sessions, isLoading, error } = useGetSessions();
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
-        <h2 className="text-xl font-bold mb-2">Failed to load sessions</h2>
-        <p className="text-muted-foreground">Please try refreshing the page.</p>
-      </div>
-    );
-  }
+  const sessions = getSessions();
+  const isLoading = false;
 
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto w-full animate-in fade-in duration-300">
@@ -75,23 +66,22 @@ export default function Sessions() {
                     <Video className="w-5 h-5" />
                   </div>
                   <Badge 
-                    variant={session.status === "ready" ? "default" : session.status === "failed" ? "destructive" : "secondary"}
+                    variant="default"
                     className="capitalize font-medium px-2.5 py-0.5"
                   >
-                    {session.status === "processing" && <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />}
-                    {session.status}
+                    ready
                   </Badge>
                 </div>
                 
                 <h3 className="font-semibold text-lg mb-2 line-clamp-2 flex-1">
                   <Link href={`/sessions/${session.id}`} className="hover:text-primary transition-colors">
-                    {session.title || "Untitled Session"}
+                    {"Video Analysis"}
                   </Link>
                 </h3>
                 
                 <div className="flex items-center text-xs text-muted-foreground mb-4">
                   <Clock className="w-3.5 h-3.5 mr-1.5" />
-                  {format(new Date(session.createdAt), "MMM d, yyyy")}
+                  {format(new Date(session.timestamp), "MMM d, yyyy")}
                 </div>
                 
                 {session.keyTopics && session.keyTopics.length > 0 && (
@@ -113,7 +103,6 @@ export default function Sessions() {
                 >
                   <Play className="w-4 h-4 mr-2" /> Open
                 </Button>
-                {session.status === "ready" && (
                   <Button 
                     variant="outline" 
                     className="rounded-xl px-3 border-border hover:bg-secondary"
@@ -122,7 +111,6 @@ export default function Sessions() {
                   >
                     <BarChart2 className="w-4 h-4" />
                   </Button>
-                )}
               </CardFooter>
             </Card>
           ))}

@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useGetSessionAttempts, useGetSession, getGetSessionAttemptsQueryKey } from "@workspace/api-client-react";
+import { getSessionById } from "../lib/storage";
 import { format } from "date-fns";
 import { ArrowLeft, History, Trophy, Clock, BrainCircuit } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,15 +10,8 @@ export default function Attempts() {
   const params = useParams();
   const id = parseInt(params.id || "0", 10);
 
-  const { data: session, isLoading: sessionLoading } = useGetSession(id, { query: { enabled: !!id } });
-  const { data: attempts, isLoading: attemptsLoading } = useGetSessionAttempts(id, {
-    query: {
-      enabled: !!id,
-      queryKey: getGetSessionAttemptsQueryKey(id),
-    }
-  });
-
-  const isLoading = sessionLoading || attemptsLoading;
+  const session = getSessionById(params.id || "");
+  const hasAttempt = session?.score !== undefined;
 
   return (
     <div className="p-6 md:p-10 max-w-4xl mx-auto w-full animate-in fade-in duration-300">
@@ -44,11 +37,11 @@ export default function Attempts() {
         </Link>
       </div>
 
-      {isLoading ? (
+      {!session ? (
         <div className="space-y-4">
-          {[1,2,3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
+          <Skeleton className="h-32 w-full rounded-2xl" />
         </div>
-      ) : attempts?.length === 0 ? (
+      ) : !hasAttempt ? (
         <div className="text-center py-16 bg-card border border-border/50 rounded-3xl">
           <History className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
           <h3 className="text-xl font-medium text-foreground mb-2">No attempts yet</h3>
@@ -59,64 +52,39 @@ export default function Attempts() {
         </div>
       ) : (
         <div className="space-y-4">
-          {attempts?.map((attempt, index) => {
-            const isLatest = index === 0;
-            const isExcellent = attempt.percentage >= 80;
-            const isGood = attempt.percentage >= 60 && attempt.percentage < 80;
-
-            return (
-              <Card 
-                key={attempt.id} 
-                className={`overflow-hidden rounded-2xl border ${isLatest ? 'border-primary/30 shadow-md shadow-primary/5' : 'border-border/50'} bg-card`}
-              >
-                <div className="flex flex-col sm:flex-row">
-                  {/* Left Side - Score */}
-                  <div className={`p-6 flex flex-col items-center justify-center min-w-[160px] border-b sm:border-b-0 sm:border-r border-border/50 ${isLatest ? 'bg-primary/5' : 'bg-secondary/10'}`}>
-                    <div className={`text-3xl font-bold mb-1 ${isExcellent ? 'text-green-600' : isGood ? 'text-accent' : 'text-destructive'}`}>
-                      {Math.round(attempt.percentage)}%
-                    </div>
-                    <div className="text-sm text-muted-foreground font-medium">
-                      {attempt.score} / {attempt.totalQuestions}
-                    </div>
+          {session.score !== undefined && (
+            <Card 
+              className="overflow-hidden rounded-2xl border border-primary/30 shadow-md shadow-primary/5 bg-card"
+            >
+              <div className="flex flex-col sm:flex-row">
+                {/* Left Side - Score */}
+                <div className="p-6 flex flex-col items-center justify-center min-w-[160px] border-b sm:border-b-0 sm:border-r border-border/50 bg-primary/5">
+                  <div className={`text-3xl font-bold mb-1 ${(session.score / (session.totalQuestions || 1)) >= 0.8 ? 'text-green-600' : 'text-accent'}`}>
+                    {Math.round((session.score / (session.totalQuestions || 1)) * 100)}%
                   </div>
-
-                  {/* Right Side - Details */}
-                  <div className="p-6 flex-1 flex flex-col justify-center">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        {format(new Date(attempt.createdAt), "MMMM d, yyyy 'at' h:mm a")}
-                      </div>
-                      {isLatest && (
-                        <span className="px-2.5 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full uppercase tracking-wide">
-                          Latest
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      <div>
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block mb-1">Strengths</span>
-                        {attempt.strongTopics?.length ? (
-                          <div className="text-sm text-foreground truncate">{attempt.strongTopics.join(", ")}</div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground italic">-</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold block mb-1">Weaknesses</span>
-                        {attempt.weakTopics?.length ? (
-                          <div className="text-sm text-foreground truncate">{attempt.weakTopics.join(", ")}</div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground italic">-</div>
-                        )}
-                      </div>
-                    </div>
+                  <div className="text-sm text-muted-foreground font-medium">
+                    {session.score} / {session.totalQuestions}
                   </div>
                 </div>
-              </Card>
-            );
-          })}
+
+                {/* Right Side - Details */}
+                <div className="p-6 flex-1 flex flex-col justify-center">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      {format(new Date(session.timestamp), "MMMM d, yyyy 'at' h:mm a")}
+                    </div>
+                    <span className="px-2.5 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full uppercase tracking-wide">
+                      Latest
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Quiz completed and saved locally.
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       )}
     </div>
