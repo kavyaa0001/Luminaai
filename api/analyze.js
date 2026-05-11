@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     let transcript = '';
     try {
       const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
-      transcript = transcriptItems.slice(0, 300).map(item => item.text).join(" ");
+      transcript = transcriptItems.map(item => item.text).join(" ");
     } catch (err) {
       transcript = `Content about video ${videoId}. Please analyze based on the title and topic.`;
     }
@@ -60,8 +60,8 @@ export default async function handler(req, res) {
       "keyTopics": ["topic1", "topic2"],
       "questions": [{"questionText": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctOption": "A", "topic": "...", "explanation": "..."}]
     }
-    Generate exactly ${questionCount} questions.
-    Transcript: ${transcript.substring(0, 10000)}`;
+    Generate exactly ${questionCount} questions. STRICTLY base your summary, key topics, and questions ONLY on the provided transcript. Do not include external knowledge or hallucinate facts that are not in the video. If the transcript is empty or generic, return generic questions, but otherwise stick to the facts in the text.
+    Transcript: ${transcript.substring(0, 50000)}`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
