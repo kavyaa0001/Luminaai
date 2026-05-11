@@ -91,7 +91,7 @@ export default function SessionDetail() {
             {session.title || "Untitled Session"}
           </h1>
           <div className="flex flex-wrap gap-2">
-            {session.keyTopics?.map((topic, i) => (
+            {(Array.isArray(session.keyTopics) ? session.keyTopics : (typeof session.keyTopics === 'string' ? JSON.parse(session.keyTopics || '[]') : [])).map((topic: string, i: number) => (
               <span key={i} className="px-3 py-1.5 bg-secondary/60 border border-secondary text-secondary-foreground text-sm rounded-lg font-medium">
                 {topic}
               </span>

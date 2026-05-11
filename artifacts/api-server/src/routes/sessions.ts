@@ -1,9 +1,22 @@
 import { Router } from "express";
-import { db, sessionsTable, questionsTable, attemptsTable } from "../../../lib/db/src/index.js";
+import { db, sessionsTable, questionsTable, attemptsTable } from "@workspace/db";
 import { eq, desc, count } from "drizzle-orm";
 import { processSession } from "../lib/ai-analysis.js";
 
 const router = Router();
+
+function formatSession(session: any) {
+  if (!session) return session;
+  let parsedKeyTopics = session.keyTopics;
+  if (typeof parsedKeyTopics === 'string') {
+    if (parsedKeyTopics.startsWith('{') && parsedKeyTopics.endsWith('}')) {
+      parsedKeyTopics = parsedKeyTopics.slice(1, -1).split(',').map((s: string) => s.trim().replace(/^"|"$/g, ''));
+    } else {
+      try { parsedKeyTopics = JSON.parse(parsedKeyTopics); } catch (e) {}
+    }
+  }
+  return { ...session, keyTopics: Array.isArray(parsedKeyTopics) ? parsedKeyTopics : [] };
+}
 
 router.get("/sessions", async (_req: any, res: any) => {
   try {
@@ -15,7 +28,7 @@ router.get("/sessions", async (_req: any, res: any) => {
       const qCountResult = await db.select({ count: count() })
         .from(questionsTable)
         .where(eq(questionsTable.sessionId, s.id));
-      return { ...s, questionCount: qCountResult[0].count };
+      return { ...formatSession(s), questionCount: qCountResult[0].count };
     }));
 
     res.json(sessionsWithCount);
@@ -40,7 +53,7 @@ router.post("/sessions", async (req: any, res: any) => {
       status: "pending",
     }).returning();
 
-    res.status(201).json({ ...session, questionCount: 0 });
+    res.status(201).json({ ...formatSession(session), questionCount: 0 });
   } catch (error) {
     res.status(500).json({ error: "Failed to create session" });
   }
@@ -66,7 +79,7 @@ router.get("/sessions/:id", async (req: any, res: any) => {
     const questions = session.questions || [];
 
     res.json({
-      ...session,
+      ...formatSession(session),
       questionCount: questions.length,
       questions,
     });
@@ -114,7 +127,7 @@ router.post("/sessions/:id/analyze", async (req: any, res: any) => {
     
     // @ts-ignore
     const questions = updatedSession?.questions || [];
-    res.json({ ...updatedSession, questionCount: questions.length, questions });
+    res.json({ ...formatSession(updatedSession), questionCount: questions.length, questions });
   } catch (error: any) {
     console.error("Analysis error:", error);
     

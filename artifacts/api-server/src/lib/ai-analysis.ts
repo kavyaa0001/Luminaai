@@ -1,13 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "./logger.js";
-import { db, sessionsTable, questionsTable } from "../../../lib/db/src/index.js";
+import { db, sessionsTable, questionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { YoutubeTranscript } from "youtube-transcript";
 
 function getModel() {
   if (!process.env.GEMINI_API_KEY) return null;
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  return genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 }
 
 interface GeneratedQuestion {
