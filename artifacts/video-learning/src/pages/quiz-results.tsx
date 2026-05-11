@@ -1,5 +1,5 @@
 import { useLocation, useParams, useSearch } from "wouter";
-import { useGetSessionAttempts, useGetSession, getGetSessionAttemptsQueryKey } from "@workspace/api-client-react";
+import { getSessionById } from "../lib/storage";
 import { useMemo } from "react";
 import { Trophy, ArrowRight, CheckCircle2, XCircle, ChevronLeft, Target, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,26 +15,14 @@ export default function QuizResults() {
   const attemptId = searchParams.get("attempt") ? parseInt(searchParams.get("attempt")!, 10) : null;
   const [, setLocation] = useLocation();
 
-  const { data: session } = useGetSession(id, { query: { enabled: !!id } });
-  const { data: attempts, isLoading } = useGetSessionAttempts(id, {
-    query: {
-      enabled: !!id,
-      queryKey: getGetSessionAttemptsQueryKey(id),
-    }
-  });
-
-  // Find the specific attempt, or default to the most recent one
-  const result = useMemo(() => {
-    if (!attempts || attempts.length === 0) return null;
-    if (attemptId) {
-      return attempts.find(a => a.id === attemptId) || attempts[0];
-    }
-    return attempts[0]; // assumes sorted desc by backend, if not we could sort here
-  }, [attempts, attemptId]);
-
-  if (isLoading) {
-    return <div className="p-10 flex justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  }
+  const session = getSessionById(params.id || "");
+  const result = session?.score !== undefined ? {
+    percentage: (session.score / (session.totalQuestions || 1)) * 100,
+    score: session.score,
+    totalQuestions: session.totalQuestions,
+    strongTopics: [],
+    weakTopics: []
+  } : null;
 
   if (!result || !session) {
     return (
