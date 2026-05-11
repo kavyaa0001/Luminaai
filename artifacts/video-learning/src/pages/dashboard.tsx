@@ -1,4 +1,4 @@
-import { useGetDashboardSummary, useGetTopicAnalysis, useGetRecentActivity } from "@workspace/api-client-react";
+import { getSessions } from "../lib/storage";
 import { BarChart, Activity, Target, Zap, CheckCircle2, TrendingUp, Clock, BookOpen, AlertCircle, PlayCircle, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
@@ -10,19 +10,26 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } 
 import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
-  const { data: summary, isLoading: loadingSummary } = useGetDashboardSummary();
-  const { data: topicAnalysis, isLoading: loadingTopics } = useGetTopicAnalysis();
-  const { data: recentActivity, isLoading: loadingActivity } = useGetRecentActivity();
-
-  // Fetch mistakes manually since it's a new endpoint
-  const { data: mistakes, isLoading: loadingMistakes } = useQuery({
-    queryKey: ['/api/dashboard/mistakes'],
-    queryFn: async () => {
-      const res = await fetch('/api/dashboard/mistakes');
-      if (!res.ok) throw new Error('Failed to fetch mistakes');
-      return res.json();
-    }
-  });
+  const sessions = getSessions();
+  const summary = {
+    totalSessions: sessions.length,
+    totalQuizzesTaken: sessions.filter(s => s.score !== undefined).length,
+    overallAccuracy: sessions.length ? 
+      (sessions.reduce((acc, s) => acc + ((s.score || 0)/(s.totalQuestions || 1)), 0) / sessions.filter(s => s.score !== undefined).length) * 100 
+      : 0
+  };
+  const loadingSummary = false;
+  const topicAnalysis: any[] = [];
+  const loadingTopics = false;
+  const recentActivity = sessions.map(s => ({
+    createdAt: s.timestamp,
+    type: 'session_created',
+    sessionId: s.id,
+    sessionTitle: s.title || "Video Analysis"
+  }));
+  const loadingActivity = false;
+  const mistakes: any[] = [];
+  const loadingMistakes = false;
 
   const accuracyData = [
     { name: "Correct", value: summary?.overallAccuracy || 0, color: "#10b981" },
@@ -67,7 +74,7 @@ export default function Dashboard() {
           />
           <StatCard 
             title="Average Score" 
-            value={summary?.averageScore ? `${Math.round(summary.averageScore)}%` : "0%"} 
+            value={summary?.overallAccuracy ? `${Math.round(summary.overallAccuracy)}%` : "0%"} 
             icon={TrendingUp} 
             loading={loadingSummary}
             color="text-green-500"
