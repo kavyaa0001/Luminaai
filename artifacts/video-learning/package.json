@@ -73,5 +73,8 @@
     "vite": "5.4.11",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "tailwindcss-animate": "^1.0.7"
   }
 }

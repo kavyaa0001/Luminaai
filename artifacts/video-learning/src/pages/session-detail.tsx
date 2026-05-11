@@ -103,6 +103,7 @@ export default function SessionDetail() {
 
 
 
+        </div>
         <div className="space-y-6">
           {/* Stats Card */}
           <div className="bg-primary text-primary-foreground rounded-3xl p-6 shadow-xl shadow-primary/10 relative overflow-hidden">
