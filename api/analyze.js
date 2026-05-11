@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
       transcript = transcriptItems.map(item => item.text).join(" ");
     } catch (err) {
-      transcript = `Content about video ${videoId}. Please analyze based on the title and topic.`;
+      return res.status(400).json({ error: 'Could not fetch transcript for this video. The video might not have captions enabled or YouTube is blocking the request.' });
     }
 
     const model = getModel();

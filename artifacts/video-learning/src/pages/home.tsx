@@ -55,7 +55,12 @@ export default function Home() {
         })
       });
       
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        throw new Error("Server took too long to respond or returned an invalid response.");
+      }
       
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to analyze video");
