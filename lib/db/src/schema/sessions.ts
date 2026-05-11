@@ -2,8 +2,8 @@ import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { questionsTable } from "./questions";
-import { attemptsTable } from "./attempts";
+import { questionsTable } from "./questions.js";
+import { attemptsTable } from "./attempts.js";
 
 export const sessionsTable = pgTable("sessions", {
   id: serial("id").primaryKey(),
@@ -14,7 +14,7 @@ export const sessionsTable = pgTable("sessions", {
   status: text("status").notNull().default("pending"),
   transcript: text("transcript"),
   summary: text("summary"),
-  keyTopics: text("key_topics", { mode: "json" }).$type<string[]>(),
+  keyTopics: text("key_topics").$type<string[]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

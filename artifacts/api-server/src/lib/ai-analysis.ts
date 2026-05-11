@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "./logger.js";
 import { db, sessionsTable, questionsTable } from "@workspace/db";

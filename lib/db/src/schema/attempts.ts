@@ -2,7 +2,7 @@ import { pgTable, serial, text, timestamp, integer, doublePrecision, jsonb } fro
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { sessionsTable } from "./sessions";
+import { sessionsTable } from "./sessions.js";
 
 export const attemptsTable = pgTable("attempts", {
   id: serial("id").primaryKey(),
